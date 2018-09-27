@@ -5,6 +5,11 @@ date: "September 27, 2018"
 output: html_document
 ---
 
+# Visualizing data
+You will make lots of graphs. Most are just for you, but you will make 
+lots of them. Start with basic graphs, then build upon them using ggplot
+to get better sense of your data.
+
 # Set up session by loading libraries
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -94,14 +99,86 @@ When the aesthetics are moved to ggplot, all geoms are affected.
 
 geom_smooth graphs multiple lines with colors matching the points because the 
 aesthetics differntiates the data into 3 clusters based on the locations 
-(Central Park, HI, WA)
+(Central Park, HA, WA)
 ```{r}
 ggplot(weather_df, aes(x = tmin, y = tmax, color = name)) +
   geom_point(alpha = 0.4) +
   geom_smooth(se = FALSE)
 ```
 
+# Facetting
+Create separate graphs for each value of name
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  facet_grid(~ name)
+```
 
+
+# More interesting plots
+Look at max temperature over the course of a year
+```{r}
+ggplot(weather_df, aes(x = date, y = tmax, color = name)) + 
+  geom_point()
+```
+
+Instead of points, we can graph lines
+```{r}
+ggplot(weather_df, aes(x = date, y = tmax, color = name)) + 
+  geom_line()
+```
+
+Add another aes option to make points small/large depending on value of
+precipitation (prcp)
+```{r}
+ggplot(weather_df, aes(x = date, y = tmax, color = name, size = prcp)) + 
+  geom_point()
+```
+
+More smoothing options
+```{r}
+ggplot(weather_df, aes(x = date, y = tmax, color = name, size = prcp)) + 
+  geom_point() +
+  geom_smooth() +
+  facet_grid(~ name)
+```
+
+
+# Univariate plots
+## Histograms
+```{r}
+ggplot(weather_df, aes(x = tmax, fill = name)) +
+  geom_histogram()
+```
+
+## Density plot
+```{r}
+ggplot(weather_df, aes(x = tmax, fill = name)) +
+  geom_density(alpha = 0.5)
+```
+
+## Box plot
+Box plot aes is y-axis for the value, not x-axis like 
+histogram and density plots. x-axis aes will help with 
+separate box plots
+```{r}
+ggplot(weather_df, aes(x = name, y = tmax)) +
+  geom_boxplot()
+```
+
+## Violin plot
+Convey distribution info like box and density plot combined
+```{r}
+ggplot(weather_df, aes(x = name, y = tmax)) +
+  geom_violin()
+```
+
+## Putting ggridges to work
+```{r}
+ggplot(weather_df, aes(x = tmax, y = name)) +
+  geom_density_ridges()
+```
 
 
 
