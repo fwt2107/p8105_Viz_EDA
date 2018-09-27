@@ -8,12 +8,12 @@ output: html_document
 # Set up session by loading libraries
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library('tidyverse')
-library('ggridges')
+library(tidyverse)
+library(ggridges)
 ```
 
 # Create dataset
-```{r}
+```{r data_import, cache = TRUE}
 library(rnoaa)
 
 weather_df = 
@@ -30,4 +30,79 @@ weather_df =
   select(name, id, everything())
 weather_df
 ```
+
+# Creating graphs
+
+Making our first plot.
+
+The first parameter is the dataset, then the aesthetics 
+(the things you care about showing). Since we haven't given
+the plot the geometries we want, it gives us a blank plot.
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax))
+```
+
+Adding geom_point() gives us a scatterplot with the specified aesthetics.
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point()
+```
+
+Can be used as part of a pipeline if desired
+```{r}
+weather_df %>% 
+  filter(name == "CentralPark_NY") %>% 
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_point()
+```
+
+Plots from ggplot can be saved in a variable
+```{r}
+weather_sp <- ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point()
+weather_sp
+```
+
+# More plot options
+Add color to scatterplot by using name as the aesthetic.
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point(aes(color = name))
+```
+
+Add another geom.
+
+geom_smooth() plots a smooth line through your data. Include option to 
+not include the SE bands around the line for this case.
+
+Notice that the geom_smooth line is a single color because the color mapping
+is only within geom_point.
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point(aes(color = name)) +
+  geom_smooth(se = FALSE)
+```
+
+Adjust alpha parameter in geom_point to adjust transperancy of points
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point(aes(color = name), alpha = 0.4) +
+  geom_smooth(se = FALSE)
+```
+
+When the aesthetics are moved to ggplot, all geoms are affected. 
+
+geom_smooth graphs multiple lines with colors matching the points because the 
+aesthetics differntiates the data into 3 clusters based on the locations 
+(Central Park, HI, WA)
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(se = FALSE)
+```
+
+
+
+
+
 
