@@ -174,12 +174,31 @@ ggplot(weather_df, aes(x = name, y = tmax)) +
   geom_violin()
 ```
 
-## Putting ggridges to work
+## Putting ggridges to work to make ridge plots
 ```{r}
 ggplot(weather_df, aes(x = tmax, y = name)) +
   geom_density_ridges()
 ```
 
+# Saving or embedding ggplots
+Save as pdf
+```{r}
+ridge_plot <- ggplot(weather_df, aes(x = tmax, y = name)) +
+  geom_density_ridges()
+ggsave('ridge_plot.pdf', ridge_plot, width = 8, height = 5)
+```
 
+Options like this give you control for sizing/aspect ratio stuff for 
+saved plots
+```{r}
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+```
 
-
+# Last example
+```{r}
+ggplot(weather_df, aes(y = prcp, x = name)) + geom_boxplot()
+```

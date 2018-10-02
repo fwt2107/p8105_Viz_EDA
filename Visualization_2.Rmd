@@ -1,0 +1,260 @@
+---
+title: "Visualization_2"
+author: "Felix Tran"
+date: "October 2, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggridges)
+library(ggplot2)
+```
+
+To get a more complete picture of your data, make lots of different graphs
+highlighting different aspects of your data.
+
+Today we will talk about graphing features to produce graphs you would show to 
+others.
+
+```{r}
+devtools::install_github('thomasp85/patchwork')
+```
+
+
+# Import data
+```{r data_import, cache = TRUE}
+library(rnoaa)
+
+weather_df = 
+  rnoaa::meteo_pull_monitors(c("USW00094728", "USC00519397", "USS0023B17S"),
+                      var = c("PRCP", "TMIN", "TMAX"), 
+                      date_min = "2017-01-01",
+                      date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY", 
+                      USC00519397 = "Waikiki_HA",
+                      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+weather_df
+```
+
+# Scatterplot
+Can add options to make graphs easier to read for others and yourself
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  )
+```
+
+
+Tick marks and labels
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  ) +
+  scale_x_continuous(
+    breaks = c(-15, 0, 15),
+    labels = c("-15 C", "0", "15"),
+    limits = c(-20, 42)
+  ) +
+  scale_y_continuous(
+    position = "right",
+    trans = "sqrt"
+  )
+  
+```
+
+
+# Colors and themes
+Adjust colors
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  ) +
+  scale_color_hue(h = c(100, 350),
+                  l = 75,
+                  name = "Location")
+```
+
+
+The viridis package installed with another package gives some color palettes
+for graphs
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  ) +
+  viridis::scale_color_viridis(
+    name = "Location",
+    discrete = T
+  )
+```
+
+Plot legend
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  ) +
+  viridis::scale_color_viridis(
+    name = "Location",
+    discrete = T
+  ) +
+  theme(legend.position = "bottom")
+```
+
+
+# Themes
+
+Changing the theme
+
+The order for theme_bw() and theme() matters! theme_bw() resets the overall 
+theme of the plot so put theme() afterwards if you want to adjust things like
+legend position
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  ) +
+  viridis::scale_color_viridis(
+    name = "Location",
+    discrete = T
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggplot(weather_df, aes(x = date, y = tmax)) + 
+  geom_line(aes(color = name), alpha = 0.75) +
+  labs(
+    title = "Max temperature by date",
+    x = "Date",
+    y = "Temperature in Celsius",
+    caption = "Celsius"
+  ) +
+  scale_color_discrete(name = "Location") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+# Arguments to 'geom_*'
+Demonstrate how the data paramter in geom_* can be used to stack a layer with
+data distinct from the data used for the majority of the graph.
+
+An application of this would be when you graph a large dataset, and then you 
+want to graph on top of it summary information.
+```{r}
+centralpark_df <- weather_df %>% 
+  filter(name == "CentralPark_NY")
+waikiki_df <- weather_df %>% 
+  filter(name == "Waikiki_HA")
+
+ggplot(waikiki_df, aes(x = date, y = tmax)) +
+  geom_point() +
+  geom_line(data = centralpark_df)
+```
+
+
+# Patchwork
+Patching together different plots into a single display.
+
+Different from facet in that facet creates the same kind of plot many times 
+contingent on a single variable in the dataset. Patchwork is for putting 
+together fundamentally different graphs.
+```{r}
+library(patchwork)
+tmax_tmin_p = ggplot(weather_df, aes(x = tmax, y = tmin, color = name)) + 
+  geom_point(alpha = .5) +
+  theme(legend.position = "none")
+
+prcp_dens_p = weather_df %>% 
+  filter(prcp > 0) %>% 
+  ggplot(aes(x = prcp, fill = name)) + 
+  geom_density(alpha = .5) + 
+  theme(legend.position = "none")
+
+tmax_date_p = ggplot(weather_df, aes(x = date, y = tmax, color = name)) + 
+  geom_point(alpha = .5) +
+  geom_smooth(se = FALSE) + 
+  theme(legend.position = "bottom")
+
+(tmax_tmin_p + prcp_dens_p) / tmax_date_p
+```
+
+
+# Data manipulation
+In the background, name is read as a factor in ggplot to determine order.
+
+The forcats package allows us to change order of the values of the name variable
+when name is read as a factor variable.
+
+fct_relevel lets you manually choose order of the variable you will order by
+```{r}
+ggplot(weather_df, aes(x = name, y = tmax, fill = name)) +
+  geom_violin()
+
+weather_df %>%
+  mutate(name = forcats::fct_relevel(name, c("Waikiki_HA", "CentralPark_NY", "Waterhole_WA"))) %>% 
+  ggplot(aes(x = name, y = tmax)) + 
+  geom_violin(aes(fill = name), color = "blue", alpha = .5) + 
+  theme(legend.position = "bottom")
+```
+
+fct_reorder lets you determine how to order the variable (e.g. by mean value of
+another variable)
+```{r}
+ggplot(weather_df, aes(x = name, y = tmax, fill = name)) +
+  geom_violin()
+
+weather_df %>%
+  mutate(name = forcats::fct_reorder(name, tmax)) %>% 
+  ggplot(aes(x = name, y = tmax)) + 
+  geom_violin(aes(fill = name), color = "blue", alpha = .5) + 
+  theme(legend.position = "bottom")
+```
+
+Data manipulation is crucial for creating complex plots in ggplot. It often is
+easier to manipulate the data to fit your plotting needs than to add lots of 
+options in ggplot to get it to plot your data as is.
+```{r}
+weather_df %>%
+  select(name, tmax, tmin) %>% 
+  gather(key = observation, value = temp, tmax:tmin) %>% 
+  ggplot(aes(x = temp, fill = observation)) +
+  geom_density(alpha = .5) + 
+  facet_grid(~name) + 
+  viridis::scale_fill_viridis(discrete = TRUE)
+```
+
