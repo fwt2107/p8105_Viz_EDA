@@ -11,3 +11,154 @@ library(tidyverse)
 ```
 
 
+# Import data
+```{r data_import, cache = TRUE}
+library(rnoaa)
+
+weather_df = 
+  rnoaa::meteo_pull_monitors(c("USW00094728", "USC00519397", "USS0023B17S"),
+                      var = c("PRCP", "TMIN", "TMAX"), 
+                      date_min = "2017-01-01",
+                      date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY", 
+                      USC00519397 = "Waikiki_HA",
+                      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10,
+    month = lubridate::floor_date(date, unit = "month")) %>%
+  select(name, id, everything())
+weather_df
+```
+
+Looking at the output, group_by() doesn't appear to change anything, but it
+affects how other functions from tidyverse work. ungroup() removes whatever
+grouping options you put.
+
+n() is how many counts.
+
+summarize() gives us a dataset with summary information we specify for every 
+group. In this case, the number of observations for each group we define 
+(name by month) (36 groups because of 3 names by 12 months).
+```{r}
+weather_df %>% 
+  group_by(name, month) %>% 
+  summarize(number = n())
+```
+
+count() works in addition to n()
+```{r}
+weather_df %>% 
+  count(month)
+```
+
+# Grouped summaries
+Can look at descriptions of lots of stuff
+```{r}
+weather_df %>% 
+  group_by(name, month) %>% 
+  summarize(number = n(),
+            num_na = sum(is.na(tmax)),
+            mean_tmax = mean(tmax, na.rm = T),
+            median_prcp = median(prcp, na.rm = T),
+            sd_tmin = sd(tmin, na.rm = T))
+```
+
+summarize() outputs a tibble, so we can apply all the ggplot/tidyverse stuff
+to our summarized results too.
+
+We can stack graphs of our original data and our summary information to
+create more complex graphs.
+```{r}
+weather_df %>% 
+  group_by(name, month) %>% 
+  summarize(number = n(),
+            num_na = sum(is.na(tmax)),
+            mean_tmax = mean(tmax, na.rm = T),
+            median_prcp = median(prcp, na.rm = T),
+            sd_tmin = sd(tmin, na.rm = T)) %>% 
+  ggplot(aes(x = month, y = mean_tmax, color = name)) +
+  geom_point()
+
+
+month_df <- weather_df %>% 
+  group_by(name, month) %>% 
+  summarize(number = n(),
+            num_na = sum(is.na(tmax)),
+            mean_tmax = mean(tmax, na.rm = T),
+            median_prcp = median(prcp, na.rm = T),
+            sd_tmin = sd(tmin, na.rm = T))
+
+ggplot(weather_df, aes(x = date, y = tmax, color = name)) +
+  geom_point(alpha = 0.5) +
+  geom_line(data = month_df, aes(x = month, y = mean_tmax, color = name))
+```
+
+
+Using spread() at the end of our summarize() function reformats our summarized
+data into a format more suited for human readibility.
+```{r}
+weather_df %>% 
+  group_by(name, month) %>% 
+  summarize(mean_tmax = mean(tmax, na.rm = T)) %>% 
+  spread(key = name, value = mean_tmax)
+```
+
+
+# Grouped mutate
+mutate() will apply the mutate function within the specified groups from 
+group_by().
+```{r}
+weather_df %>% 
+  group_by(name) %>% 
+  mutate(mean_tmax = mean(tmax, na.rm = T), centered_tmax = tmax - mean_tmax) %>% 
+  ggplot(aes(x = date, y = centered_tmax, color = name)) +
+  geom_point()
+```
+
+
+# Window functions
+min_rank in dplyr package preferred.
+We can rank the tmax values by location and month, then see the coldest days of
+each month at each location.
+```{r}
+weather_df %>% 
+  group_by(name, month) %>% 
+  mutate(tmax_rank = min_rank(tmax)) %>% 
+  filter(tmax_rank == 1)
+```
+
+Add desc within min_rank() to rank in opposite direction (in this case the 
+hottest days)
+```{r}
+weather_df %>% 
+  group_by(name, month) %>% 
+  mutate(tmax_rank = min_rank(desc(tmax))) %>% 
+  filter(tmax_rank == 1)
+```
+
+lag() function in dplyr gives the preceding value of the specified variable.
+This means you have to order the data in the way you want before applying lag().
+In this example we want the max temp of yesterday, so the data are in order by 
+date before applying the lag() function.
+This still respects the group() function so it'll only take the preceding value
+if the preceding value is within the same group.
+```{r}
+weather_df %>% 
+  group_by(name) %>% 
+  mutate(lag_tmax = lag(tmax))
+```
+
+Now we can calculate how much the temperature changes day to day in each 
+location. Then we summarize() to see how variability there is in daily 
+temperature changes in each location.
+```{r}
+weather_df %>% 
+  group_by(name) %>% 
+  mutate(lag_tmax = lag(tmax),
+         one_day_change = tmax - lag_tmax) %>% 
+  summarize(sd_one_day_change = sd(one_day_change, na.rm = T))
+```
+
+
+Note: summarize() only works with functions that return a single-number summary.
